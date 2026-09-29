@@ -9,7 +9,7 @@ Gebaut mit [n8n](https://n8n.io) (selbst gehostet) und der offenen
 > **In English:** Scheduled n8n pipeline that pulls daily ECB exchange rates (EUR → USD, GBP,
 > PLN, CHF) from a public REST API, flattens the response and stores one row per day.
 
-![Workflow](screenshots/workflow.png)
+![Workflow](workflow.png)
 
 ---
 
@@ -55,14 +55,15 @@ für Auswertungen oder einen automatischen Report.
 
 ## Installation
 
-1. `workflow/wechselkurs-pipeline.json` in n8n importieren (*Workflows → Import from File*).
+1. `wechselkurs-pipeline.json` in n8n importieren (*Workflows → Import from File*).
 2. Eine Data Table namens `Wechselkurse` anlegen mit den Spalten
    `datum` (String) sowie `USD`, `GBP`, `PLN`, `CHF` (Number).
 3. Im Node **Kurse speichern** die Tabelle einmal aus der Liste neu anklicken – erst dann
    ist sie wirklich verknüpft. Kontrollieren: Operation **Upsert**, Bedingung
    `datum` *Equals* `{{ $json.datum }}`, Zuordnung *Map Automatically* (die Felder heißen
    exakt wie die Spalten).
-4. Workflow aktivieren – ab dann läuft er täglich von selbst.
+4. Workflow aktivieren (in neueren n8n-Versionen: **Publish**) – ab dann läuft er
+   täglich von selbst.
 
 ---
 
