@@ -1,0 +1,211 @@
+{
+  "name": "Wechselkurs-Pipeline",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        112
+      ],
+      "id": "a711ad1b-8367-4ec0-ab42-3a8b716faf88",
+      "name": "Manuell starten (Test)"
+    },
+    {
+      "parameters": {
+        "url": "https://api.frankfurter.app/latest?from=EUR&to=USD,GBP,PLN,CHF",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "b28f4fac-2083-4749-a96d-92de28112b7d",
+      "name": "Kurse abrufen (Frankfurter-API)"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Die Frankfurter-API liefert zwei Formen:\n//  - Zeitraum (z. B. 2026-06-01..2026-09-19): rates = { \"2026-06-02\": { USD: ..., ... }, ... }\n//  - Tageskurs (latest):                      date = \"2026-09-25\", rates = { USD: ..., ... }\n// Beide werden in dieselbe flache Tabellenform gebracht: eine Zeile pro Tag.\nconst data = $input.first().json;\nconst rates = data.rates || {};\n\nconst istTageskurs = typeof Object.values(rates)[0] === 'number';\nconst eintraege = istTageskurs ? [[data.date, rates]] : Object.entries(rates);\n\nconst rows = eintraege.map(([datum, werte]) => ({\n  datum,\n  USD: werte.USD ?? null,\n  GBP: werte.GBP ?? null,\n  PLN: werte.PLN ?? null,\n  CHF: werte.CHF ?? null,\n}));\n\nrows.sort((a, b) => a.datum.localeCompare(b.datum));\n\nreturn rows.map(r => ({ json: r }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "ec544f6c-3d20-481a-ae1a-57e78515b886",
+      "name": "Kurse aufbereiten"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "YOUR_DATATABLE_ID",
+          "mode": "list",
+          "cachedResultName": "Wechselkurse",
+          "cachedResultUrl": "/projects/YOUR_PROJECT_ID/datatables/YOUR_DATATABLE_ID"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "datum",
+              "keyValue": "={{ $json.datum }}",
+              "condition": "eq"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "datum",
+              "displayName": "datum",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "USD",
+              "displayName": "USD",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "GBP",
+              "displayName": "GBP",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "PLN",
+              "displayName": "PLN",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "CHF",
+              "displayName": "CHF",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        608,
+        0
+      ],
+      "id": "7014784a-8a28-4608-981f-921cfa37184c",
+      "name": "Kurse speichern"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 17
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -96
+      ],
+      "id": "b3d976ee-c04a-4cc2-9b1c-ba34ddbee314",
+      "name": "Täglich 17 Uhr"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Kurse abrufen (Frankfurter-API)": {
+      "main": [
+        [
+          {
+            "node": "Kurse aufbereiten",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kurse aufbereiten": {
+      "main": [
+        [
+          {
+            "node": "Kurse speichern",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manuell starten (Test)": {
+      "main": [
+        [
+          {
+            "node": "Kurse abrufen (Frankfurter-API)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Täglich 17 Uhr": {
+      "main": [
+        [
+          {
+            "node": "Kurse abrufen (Frankfurter-API)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "c1e5bcdc-1d9d-4919-9e1b-319d2975e18e",
+  "meta": {
+    "instanceId": "REDACTED"
+  },
+  "tags": []
+}
